@@ -26,14 +26,30 @@ exports.generateFeedback = async (req, res) => {
       return res.status(404).json({ message: 'Quiz not found' });
     }
 
-    // Generate feedback using Gemini
-    const feedback = await generateStudentFeedback(
-      req.user.username,
-      result.score,
-      result.totalQuestions,
-      quiz.questions,
-      result.answers
-    );
+    // Generate feedback using Gemini safely
+    let feedback;
+    try {
+      feedback = await generateStudentFeedback(
+        req.user.username,
+        result.score,
+        result.totalQuestions,
+        quiz.questions,
+        result.answers
+      );
+
+      // Ensure response format is ALWAYS consistent (arrays only)
+      if (!feedback) feedback = {};
+      feedback.strengths = Array.isArray(feedback.strengths) ? feedback.strengths : [];
+      feedback.weaknesses = Array.isArray(feedback.weaknesses) ? feedback.weaknesses : [];
+      feedback.suggestions = Array.isArray(feedback.suggestions) ? feedback.suggestions : [];
+    } catch (geminiError) {
+      console.error('Gemini API Error during feedback:', geminiError);
+      feedback = {
+        strengths: [],
+        weaknesses: [],
+        suggestions: []
+      };
+    }
 
     // Save feedback to result
     result.feedback = feedback;
@@ -67,13 +83,30 @@ exports.downloadFeedbackPDF = async (req, res) => {
 
     // Generate feedback if not yet generated
     if (!result.feedbackGenerated) {
-      const feedback = await generateStudentFeedback(
-        req.user.username,
-        result.score,
-        result.totalQuestions,
-        quiz.questions,
-        result.answers
-      );
+      // Generate feedback using Gemini safely
+      let feedback;
+      try {
+        feedback = await generateStudentFeedback(
+          req.user.username,
+          result.score,
+          result.totalQuestions,
+          quiz.questions,
+          result.answers
+        );
+
+        // Ensure response format is ALWAYS consistent (arrays only)
+        if (!feedback) feedback = {};
+        feedback.strengths = Array.isArray(feedback.strengths) ? feedback.strengths : [];
+        feedback.weaknesses = Array.isArray(feedback.weaknesses) ? feedback.weaknesses : [];
+        feedback.suggestions = Array.isArray(feedback.suggestions) ? feedback.suggestions : [];
+      } catch (geminiError) {
+        console.error('Gemini API Error during PDF generation:', geminiError);
+        feedback = {
+          strengths: [],
+          weaknesses: [],
+          suggestions: []
+        };
+      }
       result.feedback = feedback;
       result.feedbackGenerated = true;
       await result.save();
@@ -174,7 +207,22 @@ exports.getClassFeedback = async (req, res) => {
       return res.status(404).json({ message: 'No results available for analysis' });
     }
 
-    const feedback = await generateClassFeedback(quiz.title, quiz.questions, results);
+    let feedback;
+    try {
+      feedback = await generateClassFeedback(quiz.title, quiz.questions, results);
+      
+      if (!feedback) feedback = {};
+      feedback.strongTopics = Array.isArray(feedback.strongTopics) ? feedback.strongTopics : [];
+      feedback.weakTopics = Array.isArray(feedback.weakTopics) ? feedback.weakTopics : [];
+      feedback.teachingSuggestions = Array.isArray(feedback.teachingSuggestions) ? feedback.teachingSuggestions : [];
+    } catch (error) {
+      console.error('Gemini Class Feedback Error:', error);
+      feedback = {
+        strongTopics: [],
+        weakTopics: [],
+        teachingSuggestions: []
+      };
+    }
 
     res.json({
       message: 'Class feedback generated successfully',

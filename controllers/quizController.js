@@ -107,7 +107,14 @@ exports.generateQuestions = async (req, res) => {
       return res.status(400).json({ message: 'Number of questions must be between 1 and 50' });
     }
 
-    const questions = await generateQuizQuestions(content, numQuestions, title);
+    let questions;
+    try {
+      questions = await generateQuizQuestions(content, numQuestions, title);
+      questions = Array.isArray(questions) ? questions : [];
+    } catch (error) {
+      console.error("Gemini Quiz Error:", error);
+      questions = [];
+    }
 
     res.json({
       message: 'Questions generated successfully',
