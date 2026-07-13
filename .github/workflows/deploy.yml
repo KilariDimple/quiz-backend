@@ -1,4 +1,4 @@
-name: Deploy Frontend
+name: Deploy Backend
 
 on:
   push:
@@ -10,15 +10,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy Frontend
+      - name: Deploy Backend
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/quiz-frontend
+            cd ~/quiz-backend
             git pull origin main
             npm install
-            npm run build
-            pm2 restart quiz-frontend
+            pm2 restart quiz-backend --update-env
